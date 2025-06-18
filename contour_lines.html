@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Contour Lines with p5.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+</head>
+<body>
+<script>
+let cols, rows;
+let noiseVals;
+
+let seed = 12345;
+let scale = 0.05;
+let numContours = 20;
+
+let zoom = 5.0;
+let offsetX = 10.0;
+let offsetY = -5.0;
+
+function setup() {
+  createCanvas(1920, 1080);
+  cols = floor(width / 4);
+  rows = floor(height / 4);
+  
+  noiseVals = new Array(cols + 1);
+  for(let i = 0; i <= cols; i++) {
+    noiseVals[i] = new Array(rows + 1);
+  }
+
+  noiseSeed(seed);
+  generateNoise();
+  noLoop();
+}
+
+function generateNoise() {
+  for (let i = 0; i <= cols; i++) {
+    for (let j = 0; j <= rows; j++) {
+      let x = (i * scale / zoom) + offsetX;
+      let y = (j * scale / zoom) + offsetY;
+      noiseVals[i][j] = noise(x, y);
+    }
+  }
+}
+
+function draw() {
+  background(24);
+  stroke(50);
+  strokeWeight(5);
+  noFill();
+
+  let step = 1.0 / numContours;
+  for (let level = 0; level <= 1.0001; level += step) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        let x = i * 4;
+        let y = j * 4;
+
+        let a = noiseVals[i][j];
+        let b = noiseVals[i + 1][j];
+        let c = noiseVals[i + 1][j + 1];
+        let d = noiseVals[i][j + 1];
+
+        let state = 0;
+        if (a > level) state |= 1;
+        if (b > level) state |= 2;
+        if (c > level) state |= 4;
+        if (d > level) state |= 8;
+
+        let p0 = interp(createVector(x, y), createVector(x + 4, y), a, b, level);
+        let p1 = interp(createVector(x + 4, y), createVector(x + 4, y + 4), b, c, level);
+        let p2 = interp(createVector(x + 4, y + 4), createVector(x, y + 4), c, d, level);
+        let p3 = interp(createVector(x, y + 4), createVector(x, y), d, a, level);
+
+        switch (state) {
+          case 1: case 14:
+            line(p3.x, p3.y, p0.x, p0.y);
+            break;
+          case 2: case 13:
+            line(p0.x, p0.y, p1.x, p1.y);
+            break;
+          case 3: case 12:
+            line(p3.x, p3.y, p1.x, p1.y);
+            break;
+          case 4: case 11:
+            line(p1.x, p1.y, p2.x, p2.y);
+            break;
+          case 5:
+            line(p0.x, p0.y, p3.x, p3.y);
+            line(p1.x, p1.y, p2.x, p2.y);
+            break;
+          case 6: case 9:
+            line(p0.x, p0.y, p2.x, p2.y);
+            break;
+          case 7: case 8:
+            line(p2.x, p2.y, p3.x, p3.y);
+            break;
+          case 10:
+            line(p0.x, p0.y, p1.x, p1.y);
+            line(p2.x, p2.y, p3.x, p3.y);
+            break;
+        }
+      }
+    }
+  }
+}
+
+function interp(p1, p2, val1, val2, level) {
+  let t = (level - val1) / (val2 - val1 + 0.0001);
+  t = constrain(t, 0, 1);
+  return createVector(
+    lerp(p1.x, p2.x, t),
+    lerp(p1.y, p2.y, t)
+  );
+}
+</script>
+</body>
+</html>
